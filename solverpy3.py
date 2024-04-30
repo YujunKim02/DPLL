@@ -40,35 +40,56 @@ def DPLL(nvar, nclause, formula):
     # Step 1 Initialize empty assignment
     s_bool = False
     v_dict = dict()
+    v_order = []
+    count = 0
     while True:
+        print(v_dict, "conut", count)
         # Step 2 unit propagation
-        simplified_formula, v_dict = unit_propagate(formula, v_dict)
+        copied_formula = formula.copy()
+        v_dict, v_order = unit_propagate(copied_formula, v_dict, v_order)
+        simplified_formula = simplify(copied_formula, v_dict)
         if len(simplified_formula) == 0: # Step 3
             return True, v_dict
-        elif [] in formula: # Step 4 Learning Procedure
-            learned_clause = clause_learning(formula, v_dict)
+        elif [] in simplified_formula: # Step 4 Clause learning Procedure
+            learned_clause = clause_learning(formula, v_dict, v_order)
             formula.append(learned_clause)
             if len(learned_clause) == 0:
                 return False, v_dict
-            
+            else:
+                # Backtrack
+                v_dict, v_order = backtrack(v_dict, v_order, learned_clause)
         else:
-            
+            # Step 5 Decision Strategy
+            v_dict, v_order = dumb_decision_strategy(nvar, v_dict, v_order)
     return s_bool, v_dict
 
-def unit_propagate(formula, v_dict):
-    formula = simplify(formula, v_dict)
+def backtrack(v_dict, v_order, learned_clause):
+    while len(v_order) and not is_unit(learned_clause, v_dict):
+        idx = v_order.pop()
+        v_dict.pop(idx)
+    return v_dict, v_order
+
+def is_unit(clause, v_dict):
+    clause_eval = [eval_literal(literal, v_dict) for literal in clause]
+    return clause_eval.count(-1) == 1
+
+def unit_propagate(formula, v_dict, v_order):
+    formula = simplify_without_deleting_clause(formula, v_dict)
     length_list = [len(clause) for clause in formula]
     while 1 in length_list:
         idx = length_list.index(1)
         L = formula[idx][0]
         v_dict[abs(L)] = (L > 0, idx) # Implied assignment of L to true
-        formula = simplify(formula, v_dict)
+        v_order.append(abs(L))
+        formula = simplify_without_deleting_clause(formula, v_dict)
         length_list = [len(clause) for clause in formula]
-    return formula, v_dict
+    return v_dict, v_order
 
-def clause_learning(formula, v_dict):
+def clause_learning(formula, v_dict, v_order):
+    print(f'formula: {formula}, v_dict: {v_dict}, v_order: {v_order}')
     D = formula[get_conflict_idx(formula, v_dict)]
-    for p, value in v_dict.items()[::-1]:
+    for p in v_order[::-1]:
+        value = v_dict[p]
         assign, implied = value
         if implied is None or variable_is_in_clause(p, D): # Decision assignment
             continue
@@ -106,9 +127,27 @@ def simplify(formula, v_dict):
             literal_eval = eval_literal(literal, v_dict)
             if literal_eval == 1:   # Delete clauses that contain literal evluated to true
                 formula.pop(i)
+                break
             elif literal_eval == 0: # Delete literals evaluated to false
                 formula[i].pop(j)
+    return formula
+
+def simplify_without_deleting_clause(formula, v_dict):
+    """
+    Simplification of formula with respect to dictionary
+    - Delete literal evluated to true
+    - Delete clause that contains literal evaluated to false
+    """
+    for i in range(len(formula))[::-1]:
+        clause = formula[i]
+        for j in range(len(clause))[::-1]:
+            literal = clause[j]
+            literal_eval = eval_literal(literal, v_dict)
+            if literal_eval == 1:   # Empty the clauses that contain literal evluated to true
+                formula[i] = []
                 break
+            if literal_eval == 0: # Delete literals evaluated to false
+                formula[i].pop(j)
     return formula
 
 def resolve(clause1, clause2):
@@ -137,6 +176,19 @@ def resolve_p(clause1, clause2, p):
         clause2.remove(p)
         return list(set(clause1 + clause2))
     assert False, "Use reolve_p only when can resolve with p"
+
+def dumb_decision_strategy(nvar, v_dict, v_order):
+    """
+    Assign true to first undecided variable
+    """
+    for i in range(1, nvar + 1):
+        try:
+            v_dict[i]
+        except KeyError:
+            v_dict[i] = True
+            v_order.append(i)
+            return v_dict, v_order
+    assert False, "All variables already assigned"
 
 def eval_literal(literal, v_dict):
     """
@@ -186,12 +238,12 @@ def main():
 
 
 if __name__ == "__main__":
-    formula = [[1, 3, -5], [2, -4, 3]]
+    # formula = [[1, 3, -5], [2, -4, 3]]
     # v_dict = {1:1, 5:0, 4:1}
 
-    print(resolve([1, 2, 4], [3, -4, 1]))
-    print(simplify(formula, {1:(True, None), 4:(True, 1)}))
-    # s, v = main()
-    # print('s', s)
-    # if s == 'SATISFIABLE':
-    #     print('v', v)
+    # print(resolve([1, 2, 4], [3, -4, 1]))
+    # print(simplify(formula, {1:(True, None), 4:(True, 1)}))
+    s, v = main()
+    print('s', s)
+    if s == 'SATISFIABLE':
+        print('v', v)
