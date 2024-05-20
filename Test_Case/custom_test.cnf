@@ -1,0 +1,6 @@
+c comment1
+c comment 2
+c
+p cnf 2 2
+1 -2 0
+2 -1 0
