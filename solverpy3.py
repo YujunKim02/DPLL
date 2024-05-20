@@ -42,27 +42,29 @@ def DPLL(nvar, nclause, formula):
     s_bool = False
     v_dict = dict()
     v_order = []
+    num_iter = 0
     while True:
+        num_iter += 1
         # Step 2 unit propagation
         copied_formula_for_unit_propagate = [clause[:] for clause in formula]
         copied_formula_for_simplify = [clause[:] for clause in formula]
         v_dict, v_order = unit_propagate(copied_formula_for_unit_propagate, v_dict, v_order)
         simplified_formula = simplify(copied_formula_for_simplify, v_dict)
         if len(simplified_formula) == 0: # Step 3
-            return True, v_dict
+            return True, v_dict, num_iter
         elif [] in simplified_formula: # Step 4 Clause learning Procedure
             copied_formula_for_clause_learning = [clause[:] for clause in formula]
             learned_clause = clause_learning(copied_formula_for_clause_learning, v_dict, v_order)
             formula.append(learned_clause)
             if len(learned_clause) == 0:
-                return False, v_dict
+                return False, v_dict, num_iter
             else:
                 # Backtrack
                 v_dict, v_order = backtrack(v_dict, v_order, learned_clause)
         else:
             # Step 5 Decision Strategy
             v_dict, v_order = dumb_decision_strategy(nvar, v_dict, v_order)
-    return s_bool, v_dict
+    return s_bool, v_dict, num_iter
 
 def backtrack(v_dict, v_order, learned_clause):
     while len(v_order) and not is_unit(learned_clause, v_dict):
@@ -251,16 +253,17 @@ def main():
     nvar, nclause, formula = read_input(cnf_path)
     copied_formula_for_validity = [clause[:] for clause in formula]
     # Executing DPLL
-    s_bool, v_dict = DPLL(nvar, nclause, formula)
+    s_bool, v_dict, num_iter = DPLL(nvar, nclause, formula)
     if s_bool:
         evaluated = eval_formula(copied_formula_for_validity, v_dict)
+        # assert(evaluated)
 
     # Parsing Output
     s, v = parse_assignment(s_bool, v_dict)
-    
+    # print(f'num_var: {nvar}, num_iter: {num_iter}')
     print('s', s)
     if s == 'SATISFIABLE':
-        print('v', v)
+        print('v', v, 0)
 
 
 if __name__ == "__main__":
@@ -272,4 +275,3 @@ if __name__ == "__main__":
     # print(simplify(formula, {1:(True, None), 4:(True, 1)}))
     
     main()
-    
