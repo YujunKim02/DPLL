@@ -1,7 +1,7 @@
 ## DPLL
 
 An implementation of the DPLL algorithm for solving SAT. 
-
+Run the following code:
 ```
-python solverpy3.py
+python dpll_solver.py
 ```

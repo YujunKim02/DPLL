@@ -1,3 +1,6 @@
+'''
+A simple DPLL Solver for solving SAT problems, implemented by @Yujun Kim.
+'''
 import sys
 
 def read_input(cnf_path):
